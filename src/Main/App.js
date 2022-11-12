@@ -2,11 +2,13 @@ import logo from '../logo.svg';
 import './App.css';
 import React, { useEffect } from 'react';
 // Import required AWS SDK clients and commands for Node.js
+import { Routes, Route, useParams, BrowserRouter } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { CognitoIdentityProviderClient, AddCustomAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
+import AWS, { CognitoIdentityServiceProvider } from 'aws-sdk';
+import { useState } from 'react';
 
 
-import { GetItemCommand } from '@aws-sdk/client-dynamodb';
-
-import AWS from 'aws-sdk'
 
 // Set the parameters
 var params = {
@@ -39,46 +41,126 @@ var params = {
 
 
 function App() {
+  // const idToken = fullUrl.split('=')[1].split('&')[0]
+  const [userName, setUserName] = useState('')
+  const [isAuthentic, setAuthentic] = useState(false)
 
-  AWS.config.update({ "accessKeyId": process.env.REACT_APP_ACCESS_ID, "secretAccessKey": process.env.REACT_APP_SECRET_ID, "region": "us-east-1" })
-  const docClient = new AWS.DynamoDB();
+  useEffect(() => {
+
+
+    const cognitoidentityserviceprovider = new CognitoIdentityServiceProvider()
+    // AWS.config.region = 'us-east-1';
+    AWS.config.update({ region: 'us-east-1' })
+    const fullUrl = document.location.href
+    const idToken = fullUrl.indexOf('id_token') !== -1 ? fullUrl.split('=')[1].split('&')[0] : ''
+    const accToken = fullUrl.indexOf('access_token') !== -1 ? fullUrl.split('=')[2].split('&')[0] : ''
+
+
+
+
+    // AWS.config.update({ "accessKeyId": process.env.REACT_APP_ACCESS_ID, "secretAccessKey": process.env.REACT_APP_SECRET_ID, "region": "us-east-1" })
+    if (idToken !== '' && accToken !== '') {
+
+      cognitoidentityserviceprovider.getUser({ AccessToken: accToken }, (err, data) => {
+        if (err) { // an error occurred
+          console.log(err, err.stack)
+          setAuthentic(false)
+        }
+        else {
+          console.log(data);           // successful response
+          setUserName(data.Username)
+          setAuthentic(true)
+        }
+      })
+
+
+      AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+        IdentityPoolId: 'us-east-1:20197a84-4e22-4bd3-a118-71f5c2174eee',
+        Logins: {
+          "cognito-idp.us-east-1.amazonaws.com/us-east-1_QIT9K8OPo": idToken
+        },
+        region: 'us-east-1'
+
+      })
+    }
+
+  }, [])
 
   const fetchData = () => {
-    // const run = async () => {
-    //   const data = await ddbClient.send(new GetItemCommand(params));
-    //   console.log("Success", data.Item);
-    //   return data;
-    // };
 
-    // const fetch = run()
-    // fetch
-    //   .then((res) => console.log(res))
-    //   .catch((err) => console.log(err))
-    docClient.createTable(params, function (err, data) {
-      if (err) console.log(err, err.stack); // an error occurred
-      else console.log(data);           // successful response
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    var params = {
+      TableName: "user",
+      Item: {
+        FirstName: "lolx"
+      }
+    }
+    docClient.put(params, function (err, data) {
+      if (err) {
+        console.log(err.message)
+        console.log('Please log in again - redirect to login ')
+      } else {
+        console.log(data)
+      }
     })
+  }
 
+  const TradeForm = () => {
+    const [posType, setPosType] = useState('')
+    const [purchPrice, setpurchPrice] = useState('')
+    const [Quantity, setQuantity] = useState('')
+    const [Stock, setStock] = useState('')
+    return (
+
+      <div className='App_form'>
+        <form className='App-form-content'>
+          <label>
+            posType:
+            <input type="text" name="name" required={true} value={posType} onChange={(evt) => setPosType(evt.target.value)} />
+          </label>
+          <label>
+            purchPrice:
+            <input type="number" name="name" required={true} value={purchPrice} onChange={(evt) => setpurchPrice(evt.target.value)} />
+          </label>
+          <label>
+            Quantity:
+            <input type="text" name="name" required={true} value={Quantity} onChange={(evt) => setQuantity(evt.target.value)} />
+          </label>
+          <label>
+            Stock:
+            <input type="text" name="name" required={true} value={Stock} onChange={(evt) => setStock(evt.target.value)} />
+          </label>
+          <input type="submit" value="Submit" />
+        </form>
+
+      </div>
+    )
   }
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
+    isAuthentic ? (
+      <div className="App">
 
-          <button onClick={() => fetchData()}>Click me</button>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
+        You Are signed in - {userName}
+        <div>
+          <button onClick={() => fetchData()}>Add trade</button>
+
+        </div>
+        <TradeForm />
+
+      </div>) : (
+
+      <div className='App'>
+        Please sign in
+        <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=http://localhost:3000/"}>
+          <button onClick={() => fetchData()}>Log In</button>
         </a>
-      </header>
-    </div>
+
+      </div>
+    )
+
+
   );
 }
 
 export default App;
+
