@@ -44,13 +44,13 @@ function App() {
   // const idToken = fullUrl.split('=')[1].split('&')[0]
   const [userName, setUserName] = useState('')
   const [isAuthentic, setAuthentic] = useState(false)
+  const [trades, updateTrades] = useState()
 
   useEffect(() => {
 
-
+    AWS.config.update({ region: 'us-east-1' })
     const cognitoidentityserviceprovider = new CognitoIdentityServiceProvider()
     // AWS.config.region = 'us-east-1';
-    AWS.config.update({ region: 'us-east-1' })
     const fullUrl = document.location.href
     const idToken = fullUrl.indexOf('id_token') !== -1 ? fullUrl.split('=')[1].split('&')[0] : ''
     const accToken = fullUrl.indexOf('access_token') !== -1 ? fullUrl.split('=')[2].split('&')[0] : ''
@@ -92,7 +92,12 @@ function App() {
     var params = {
       TableName: "user",
       Item: {
-        FirstName: "lolx"
+        FirstName: "lolx",
+        trades: [{
+          posType: "buy",
+          price: 123.23,
+          stock: "Amazon"
+        }]
       }
     }
     docClient.put(params, function (err, data) {
@@ -103,7 +108,55 @@ function App() {
         console.log(data)
       }
     })
+
   }
+  const addTrade = () => {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    var params = {
+      TableName: "user",
+      Key: { FirstName: "lolx" },
+      UpdateExpression: "SET #c = list_append(#c, :vals)",
+      ExpressionAttributeNames: {
+        "#c": "trades"
+      },
+      ExpressionAttributeValues: {
+        ":vals": [{ happy: 'mybad' }]
+      },
+
+    }
+    docClient.update(params, function (err, data) {
+      if (err) {
+        console.log(err.message)
+        console.log('Please log in again - redirect to login ')
+      } else {
+        console.log(data)
+      }
+    })
+  }
+  //get trades
+  useEffect(() => {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    var params = {
+      TableName: "user",
+      KeyConditionExpression: 'FirstName = :i',
+      ExpressionAttributeValues: {
+        ':i': 'lolx'
+      }
+    }
+    docClient.query(params, (err, data) => {
+      if (err) {
+        console.log(err)
+      } else {
+        console.log(data.Items[0].trades)
+        updateTrades(data.Items[0].trades)
+
+      }
+    })
+  }, [])
+
+
 
   const TradeForm = () => {
     const [posType, setPosType] = useState('')
@@ -136,6 +189,31 @@ function App() {
       </div>
     )
   }
+  const deleteTrade = () => {
+
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    var params = {
+      TableName: "user",
+      Key: { FirstName: "lolx" },
+      UpdateExpression: "SET #c = :vals",
+      ExpressionAttributeNames: {
+        "#c": "trades"
+      },
+      ExpressionAttributeValues: {
+        ":vals": [{ happy: 'mybad' }, { sadness: 'crying' }]
+      },
+
+    }
+    docClient.update(params, function (err, data) {
+      if (err) {
+        console.log(err.message)
+        console.log('Please log in again - redirect to login ')
+      } else {
+        console.log(data)
+      }
+    })
+
+  }
   return (
     isAuthentic ? (
       <div className="App">
@@ -143,9 +221,13 @@ function App() {
         You Are signed in - {userName}
         <div>
           <button onClick={() => fetchData()}>Add trade</button>
+          <button onClick={() => addTrade()}>Update trade</button>
+          <button onClick={() => deleteTrade()}>Delete trade</button>
+
 
         </div>
         <TradeForm />
+        {JSON.stringify(trades, null, 2)}
 
       </div>) : (
 
