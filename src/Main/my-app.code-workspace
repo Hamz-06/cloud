@@ -1,0 +1,66 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "lambda",
+			"path": "../../../lambda"
+		}
+	],
+	"settings": {},
+	"launch": {
+		"configurations": [
+			{
+				"type": "aws-sam",
+				"request": "direct-invoke",
+				"name": "fetchTrades:HelloWorldFunction (nodejs16.x)",
+				"invokeTarget": {
+					"target": "template",
+					"templatePath": "/Users/hamzahsworkspace/Documents/Computer Science/UNI WORK /Year 3/Cloud_comp/lambda/fetchTrades/template.yaml",
+					"logicalId": "HelloWorldFunction"
+				},
+				"lambda": {
+					"payload": {},
+					"environmentVariables": {},
+					"runtime": "nodejs16.x"
+				}
+			},
+			{
+				"type": "aws-sam",
+				"request": "direct-invoke",
+				"name": "API fetchTrades:HelloWorldFunction (nodejs16.x)",
+				"invokeTarget": {
+					"target": "api",
+					"templatePath": "/Users/hamzahsworkspace/Documents/Computer Science/UNI WORK /Year 3/Cloud_comp/lambda/fetchTrades/template.yaml",
+					"logicalId": "HelloWorldFunction"
+				},
+				"api": {
+					"path": "/hello",
+					"httpMethod": "get",
+					"payload": {
+						"json": {}
+					}
+				},
+				"lambda": {
+					"runtime": "nodejs16.x"
+				}
+			},
+			{
+				"type": "aws-sam",
+				"request": "direct-invoke",
+				"name": "happy:index.handler (nodejs16.x)",
+				"invokeTarget": {
+					"target": "code",
+					"projectRoot": "happy",
+					"lambdaHandler": "index.handler"
+				},
+				"lambda": {
+					"runtime": "nodejs16.x",
+					"payload": {},
+					"environmentVariables": {}
+				}
+			}
+		]
+	}
+}
