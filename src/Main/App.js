@@ -17,8 +17,9 @@ function App() {
   // const idToken = fullUrl.split('=')[1].split('&')[0]
   const [userName, setUserName] = useState('')
   const [isAuthentic, setAuthentic] = useState(false)
-  const [trades, updateTrades] = useState('')
+  const [trades, updateTrades] = useState([])
 
+  // const tradeParams = 
   useEffect(() => {
 
     AWS.config.update({ region: 'us-east-1' })
@@ -40,7 +41,7 @@ function App() {
           setAuthentic(false)
         }
         else {
-          console.log(data);           // successful response
+          //console.log(data);           // successful response
           setUserName(data.Username)
           setAuthentic(true)
         }
@@ -53,18 +54,18 @@ function App() {
           "cognito-idp.us-east-1.amazonaws.com/us-east-1_QIT9K8OPo": idToken
         },
         region: 'us-east-1'
-
       })
     }
 
   }, [])
 
+
   const addFirst = () => {
 
-    console.log("create trade and add trade")
     const docClient = new AWS.DynamoDB.DocumentClient();
-    if (trades === null || trades === []) {
-      console.log("add trade")
+
+    if (trades === null || trades.length === 0) {
+      console.log("create trade and add trade")
       var params = {
         TableName: "user",
         Item: {
@@ -81,13 +82,20 @@ function App() {
           console.log(err.message)
           console.log('Please log in again - redirect to login ')
         } else {
-          console.log(data)
+          console.log("Added succefully")
+          updateTrades(params.Item.trades)
         }
       })
     }
 
     else {
       console.log("add trade")
+      var tradeParams = [{
+        posType: "buy",
+        price: 123.0,
+        stock: "Amazon"
+      }]
+
       var params = {
         TableName: "user",
         Key: { FirstName: "lolx" },
@@ -96,16 +104,15 @@ function App() {
           "#c": "trades"
         },
         ExpressionAttributeValues: {
-          ":vals": [{ happy: 'mybad' }]
+          ":vals": tradeParams
         },
-
       }
       docClient.update(params, function (err, data) {
         if (err) {
           console.log(err.message)
           console.log('Please log in again - redirect to login ')
         } else {
-          console.log(data)
+          updateTrades(current => [...current, tradeParams[0]]);
         }
       })
     }
@@ -130,17 +137,21 @@ function App() {
       } else {
         //IF NO TRADES FIX THE PREFIX . TRADEStttt
         // console.log(data.Items[0].trades)
-        if (data.Items !== null)
-          console.log(data)
-        updateTrades(data.Items)
+        if (data.Items.length !== 0)
+          // console.log(data)
+          updateTrades(data.Items[0].trades)
 
       }
     })
   }, [])
 
-  const deleteTrade = () => {
+
+  const deleteTrade = (index) => {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
+    var localTrades = trades
+    localTrades.splice(index, 1)
+
     var params = {
       TableName: "user",
       Key: { FirstName: "lolx" },
@@ -149,7 +160,7 @@ function App() {
         "#c": "trades"
       },
       ExpressionAttributeValues: {
-        ":vals": [{ happy: 'mybad' }, { sadness: 'crying' }]
+        ":vals": localTrades
       },
 
     }
@@ -157,8 +168,11 @@ function App() {
       if (err) {
         console.log(err.message)
         console.log('Please log in again - redirect to login ')
+        isAuthentic(false)
       } else {
         console.log(data)
+
+        updateTrades([...localTrades])
       }
     })
 
@@ -209,7 +223,20 @@ function App() {
 
         </div>
         <TradeForm />
-        {JSON.stringify(trades, null, 2)}
+        <div>
+
+          {
+            trades?.map((trade, index) => {
+              return (
+                <div key={index} onClick={() => deleteTrade(index)}>
+                  {trade?.posType}
+                  {trade?.price}
+                  {trade?.stock}
+                </div>
+              )
+            })
+          }
+        </div>
 
       </div>) : (
 
