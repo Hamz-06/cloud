@@ -1,5 +1,5 @@
 import logo from '../logo.svg';
-import './App.css';
+
 import React, { useEffect } from 'react';
 // Import required AWS SDK clients and commands for Node.js
 import { Routes, Route, useParams, BrowserRouter } from 'react-router-dom';
@@ -7,10 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import { CognitoIdentityProviderClient, AddCustomAttributesCommand } from "@aws-sdk/client-cognito-identity-provider";
 import AWS, { CognitoIdentityServiceProvider } from 'aws-sdk';
 import { useState } from 'react';
-
-
-
-
+import { useRef } from 'react';
 
 
 function App() {
@@ -18,8 +15,8 @@ function App() {
   const [userName, setUserName] = useState('')
   const [isAuthentic, setAuthentic] = useState(false)
   const [trades, updateTrades] = useState([])
+  const [userTrades, allUserTrades] = useState([])
 
-  // const tradeParams = 
   useEffect(() => {
 
     AWS.config.update({ region: 'us-east-1' })
@@ -47,7 +44,6 @@ function App() {
         }
       })
 
-
       AWS.config.credentials = new AWS.CognitoIdentityCredentials({
         IdentityPoolId: 'us-east-1:20197a84-4e22-4bd3-a118-71f5c2174eee',
         Logins: {
@@ -60,27 +56,33 @@ function App() {
   }, [])
 
 
-  const addFirst = () => {
+  const addFirst = (stock, Quantity, purchPrice, posType) => {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
 
+    const tradeParams = [{
+      posType: posType,
+      price: purchPrice,
+      stock: stock,
+      quantity: Quantity
+    }]
+
+    console.log(tradeParams)
+    // if (0 == 0) return
     if (trades === null || trades.length === 0) {
       console.log("create trade and add trade")
       var params = {
         TableName: "user",
         Item: {
-          FirstName: "lolx",
-          trades: [{
-            posType: "buy",
-            price: 123.23,
-            stock: "Amazon"
-          }]
+          FirstName: userName,
+          trades: tradeParams
         }
       }
       docClient.put(params, function (err, data) {
         if (err) {
           console.log(err.message)
           console.log('Please log in again - redirect to login ')
+          setAuthentic(false)
         } else {
           console.log("Added succefully")
           updateTrades(params.Item.trades)
@@ -90,15 +92,10 @@ function App() {
 
     else {
       console.log("add trade")
-      var tradeParams = [{
-        posType: "buy",
-        price: 123.0,
-        stock: "Amazon"
-      }]
 
       var params = {
         TableName: "user",
-        Key: { FirstName: "lolx" },
+        Key: { FirstName: userName },
         UpdateExpression: "SET #c = list_append(#c, :vals)",
         ExpressionAttributeNames: {
           "#c": "trades"
@@ -117,22 +114,35 @@ function App() {
       })
     }
   }
-
+  const fetchAllTrades = () => {
+    const docClient = new AWS.DynamoDB.DocumentClient();
+    docClient.scan({
+      TableName: "user"
+    }).promise()
+      .then(data => {
+        console.log(data.Items)
+        allUserTrades(data.Items)
+      })
+      .catch((err) => {
+        console.error(err)
+        setAuthentic(false)
+      })
+  }
   //get trades - [check if logged in]
-  useEffect(() => {
+  const fetchTrades = () => {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     var params = {
       TableName: "user",
       KeyConditionExpression: 'FirstName = :i',
       ExpressionAttributeValues: {
-        ':i': 'lolx'
+        ':i': userName
       }
     }
     docClient.query(params, (err, data) => {
       if (err) {
         console.log(err)
-
+        console.log("no entity created yet")
 
       } else {
         //IF NO TRADES FIX THE PREFIX . TRADEStttt
@@ -143,7 +153,8 @@ function App() {
 
       }
     })
-  }, [])
+
+  }
 
 
   const deleteTrade = (index) => {
@@ -154,7 +165,7 @@ function App() {
 
     var params = {
       TableName: "user",
-      Key: { FirstName: "lolx" },
+      Key: { FirstName: userName },
       UpdateExpression: "SET #c = :vals",
       ExpressionAttributeNames: {
         "#c": "trades"
@@ -175,78 +186,196 @@ function App() {
         updateTrades([...localTrades])
       }
     })
-
   }
 
-
+  // Trade form to add trades 
   const TradeForm = () => {
-    const [posType, setPosType] = useState('')
+    const [posType, setPosType] = useState('Buy')
     const [purchPrice, setpurchPrice] = useState('')
     const [Quantity, setQuantity] = useState('')
     const [Stock, setStock] = useState('')
+
     return (
+      <div className='bg-green-600 w-96 h-[50%] inline-block'>
 
-      <div className='App_form'>
-        <form className='App-form-content'>
-          <label>
+        <div className='flex flex-col items-center justify-center h-full '>
+
+          <label className='flex flex-col w-[60%]'>
             posType:
-            <input type="text" name="name" required={true} value={posType} onChange={(evt) => setPosType(evt.target.value)} />
+            <select onChange={(evt) => setPosType(evt.target.value)}>
+              <option value="Buy">Buy</option>
+              <option value="Sell">Sell</option>
+            </select>
           </label>
-          <label>
+          <label className='flex flex-col w-[60%]'>
             purchPrice:
-            <input type="number" name="name" required={true} value={purchPrice} onChange={(evt) => setpurchPrice(evt.target.value)} />
+            <input type="number" name="name" value={purchPrice} onChange={(evt) => setpurchPrice(evt.target.value)} />
           </label>
-          <label>
+          <label className='flex flex-col w-[60%]'>
             Quantity:
-            <input type="text" name="name" required={true} value={Quantity} onChange={(evt) => setQuantity(evt.target.value)} />
+            <input type="number" name="name" value={Quantity} onChange={(evt) => setQuantity(evt.target.value)} />
           </label>
-          <label>
+          <label className='flex flex-col w-[60%]'>
             Stock:
-            <input type="text" name="name" required={true} value={Stock} onChange={(evt) => setStock(evt.target.value)} />
+            <input type="text" name="name" value={Stock} onChange={(evt) => setStock(evt.target.value)} />
           </label>
-          <input type="submit" value="Submit" />
-        </form>
-
-      </div>
+          <button
+            className='mt-5 p-2'
+            onClick={() => (Stock !== '' && Quantity !== '' && purchPrice !== '' && posType !== '') ? addFirst(Stock, Quantity, purchPrice, posType) : ''}>
+            click
+          </button>
+        </div>
+      </div >
     )
   }
 
-  return (
-    isAuthentic ? (
-      <div className="App">
-
-        You Are signed in - {userName}
-        <div>
-          <button onClick={() => addFirst()}>Add trade</button>
-          <button onClick={() => deleteTrade()}>Delete trade</button>
+  // my trades table
+  const MyTrades = () => {
 
 
-        </div>
-        <TradeForm />
-        <div>
+    return (
+      <table className='border-separate border-spacing-4 border border-black h-20 text-left w-full rounded-lg'>
+        <thead className='flex'>
+          <tr className='flex w-full mb-4'>
+            <th className='p-4 w-1/4'>Company</th>
+            <th className='p-4 w-1/4'>Contact</th>
+            <th className='p-4 w-1/4'>Country</th>
+            <th className='p-4 w-1/4'>Country</th>
+            <th className='p-4 w-1/4'>delete</th>
+          </tr>
+        </thead>
 
+        <tbody className='bg-grey-light flex flex-col items-center justify-between overflow-y-scroll w-full h-40'>
+          {trades?.map((trade, index) => {
+            return (
+              <tr key={index} className="flex w-full">
+                <td className='p-4 w-1/4'>{trade?.posType}</td>
+                <td className='p-4 w-1/4'>{trade?.price}</td>
+                <td className='p-4 w-1/4'>{trade?.stock}</td>
+                <td className='p-4 w-1/4'>{trade?.quantity}</td>
+                <td className='p-4 w-1/4' onClick={() => deleteTrade(index)}>DELETE</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+    )
+
+
+  }
+
+
+  //all trades of everyone using broker 
+  const AllTrades = () => {
+
+    return (
+      <table className='border-separate border-spacing-4 border border-black h-28 text-left w-full rounded-lg'>
+        <thead className='flex'>
+          <tr className='flex w-full mb-4'>
+            <th className='p-4 w-1/4'>Company</th>
+            <th className='p-4 w-1/4'>Contact</th>
+            <th className='p-4 w-1/4'>Country</th>
+            <th className='p-4 w-1/4'>Country</th>
+
+          </tr>
+        </thead>
+
+        <tbody className='bg-grey-light flex flex-col items-center justify-between overflow-y-scroll w-full h-40'>
           {
-            trades?.map((trade, index) => {
-              return (
-                <div key={index} onClick={() => deleteTrade(index)}>
-                  {trade?.posType}
-                  {trade?.price}
-                  {trade?.stock}
-                </div>
-              )
+            userTrades?.map((userTrade) => {
+              if (userTrade.FirstName === userName) return
+              return userTrade.trades.map((trade, index) => {
+                return (
+                  <tr key={index} className="flex w-full">
+                    <td className='p-4 w-1/4'>{trade?.posType}</td>
+                    <td className='p-4 w-1/4'> {trade?.price}</td>
+                    <td className='p-4 w-1/4'>  {trade?.stock}</td>
+                    <td className='p-4 w-1/4'>  {trade?.quantity}</td>
+                  </tr>
+                )
+              })
             })
           }
+        </tbody>
+      </table>
+    )
+
+
+  }
+
+
+  return (
+    // if authentic show main page else show log in 
+    isAuthentic ? (
+      <div className="bg-red-700 w-screen h-screen">
+
+        {/* navbar showing user name  */}
+        <div className='bg-slate-100 h-[4%] w-screen flex flex-row-reverse items-center'>
+          <div className='text-center w-64'>
+            You Are signed in - {userName}
+          </div>
+          <div>
+            <a href={'http://localhost:3000/'}>Sign Out</a>
+          </div>
         </div>
 
-      </div>) : (
+        {/* divide screen in two show form and my trades on left*/}
+        <div className='bg-amber-600 w-[50%] h-[96%] float-left flex flex-col justify-center items-center'>
 
-      <div className='App'>
-        Please sign in
-        <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=http://localhost:3000/"}>
-          <button>Log In</button>
-        </a>
+          <TradeForm />
 
+        </div>
+
+        {/* Divide screen in two display all trades on the right  */}
+        <div className='bg-yellow-300 w-[50%] h-[96%] float-right'>
+
+          <div className='p-5'>
+
+
+
+            <div>
+              <button onClick={fetchTrades}>Fetch my</button>
+            </div>
+
+            <MyTrades />
+
+
+
+
+
+          </div>
+
+          <div className='p-5'>
+            {
+              (true) ? <AllTrades /> : ''
+
+
+
+            }
+          </div>
+
+
+
+          <div>
+            <button onClick={fetchAllTrades}>Fetch all</button>
+          </div>
+
+
+        </div>
       </div>
+    ) : (
+
+      <div className='w-screen h-screen bg-slate-500 flex items-center justify-center'>
+        <div className='text-xl text-center'>
+          <div className=''>Please Log in </div>
+          <br />
+          <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=http://localhost:3000/"}>
+            <button className='border-2 border-blue-50 p-2'>Log In</button>
+          </a>
+        </div>
+      </div>
+
     )
 
 
