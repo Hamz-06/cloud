@@ -19,17 +19,17 @@ function App() {
 
   useEffect(() => {
 
+
     AWS.config.update({ region: 'us-east-1' })
-    const cognitoidentityserviceprovider = new CognitoIdentityServiceProvider()
+    const cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider()
     // AWS.config.region = 'us-east-1';
     const fullUrl = document.location.href
-    const idToken = fullUrl.indexOf('id_token') !== -1 ? fullUrl.split('=')[1].split('&')[0] : ''
-    const accToken = fullUrl.indexOf('access_token') !== -1 ? fullUrl.split('=')[2].split('&')[0] : ''
+    var idToken = fullUrl.indexOf('id_token') !== -1 ? fullUrl.split('=')[1].split('&')[0] : ''
+    var accToken = fullUrl.indexOf('access_token') !== -1 ? fullUrl.split('=')[2].split('&')[0] : ''
 
 
 
 
-    // AWS.config.update({ "accessKeyId": process.env.REACT_APP_ACCESS_ID, "secretAccessKey": process.env.REACT_APP_SECRET_ID, "region": "us-east-1" })
     if (idToken !== '' && accToken !== '') {
 
       cognitoidentityserviceprovider.getUser({ AccessToken: accToken }, (err, data) => {
@@ -39,18 +39,23 @@ function App() {
         }
         else {
           //console.log(data);           // successful response
+          AWS.config.update({ "accessKeyId": process.env.REACT_APP_ACCESS_ID, "secretAccessKey": process.env.REACT_APP_SECRET_ID, "region": "us-east-1" })
+          // AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+          //   IdentityPoolId: 'us-east-1:20197a84-4e22-4bd3-a118-71f5c2174eee',
+          //   Logins: {
+          //     "cognito-idp.us-east-1.amazonaws.com/us-east-1_QIT9K8OPo": idToken
+          //   },
+          //   region: 'us-east-1'
+          // })
+
+          console.log(data.Username, idToken)
+          fetchTrades(data.Username)
           setUserName(data.Username)
+
           setAuthentic(true)
         }
       })
 
-      AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-        IdentityPoolId: 'us-east-1:20197a84-4e22-4bd3-a118-71f5c2174eee',
-        Logins: {
-          "cognito-idp.us-east-1.amazonaws.com/us-east-1_QIT9K8OPo": idToken
-        },
-        region: 'us-east-1'
-      })
     }
 
   }, [])
@@ -59,7 +64,6 @@ function App() {
   const addFirst = (stock, Quantity, purchPrice, posType) => {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
-
     const tradeParams = [{
       posType: posType,
       price: purchPrice,
@@ -125,18 +129,18 @@ function App() {
       })
       .catch((err) => {
         console.error(err)
-        setAuthentic(false)
       })
   }
   //get trades - [check if logged in]
-  const fetchTrades = () => {
+  const fetchTrades = (uName) => {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
+
     var params = {
       TableName: "user",
       KeyConditionExpression: 'FirstName = :i',
       ExpressionAttributeValues: {
-        ':i': userName
+        ':i': uName
       }
     }
     docClient.query(params, (err, data) => {
@@ -196,10 +200,12 @@ function App() {
     const [Stock, setStock] = useState('')
 
     return (
-      <div className='bg-green-600 w-96 h-[50%] inline-block'>
+      <div className='dark:bg-gray-900 dark:text-gray-400 w-96 h-[50%] inline-block rounded-lg'>
 
         <div className='flex flex-col items-center justify-center h-full '>
-
+          <div>
+            Add Trade
+          </div>
           <label className='flex flex-col w-[60%]'>
             posType:
             <select onChange={(evt) => setPosType(evt.target.value)}>
@@ -220,7 +226,7 @@ function App() {
             <input type="text" name="name" value={Stock} onChange={(evt) => setStock(evt.target.value)} />
           </label>
           <button
-            className='mt-5 p-2'
+            className='mt-5 p-2 pl-5 pr-5 outline outline-gray-50'
             onClick={() => (Stock !== '' && Quantity !== '' && purchPrice !== '' && posType !== '') ? addFirst(Stock, Quantity, purchPrice, posType) : ''}>
             click
           </button>
@@ -234,31 +240,37 @@ function App() {
 
 
     return (
-      <table className='border-separate border-spacing-4 border border-black h-20 text-left w-full rounded-lg'>
-        <thead className='flex'>
-          <tr className='flex w-full mb-4'>
-            <th className='p-4 w-1/4'>Company</th>
-            <th className='p-4 w-1/4'>Contact</th>
-            <th className='p-4 w-1/4'>Country</th>
-            <th className='p-4 w-1/4'>Country</th>
-            <th className='p-4 w-1/4'>delete</th>
-          </tr>
-        </thead>
+      <div>
+        <a className='text-lg font-semibold mb-7 block'>My Trades</a>
+        <div className='overflow-y-auto h-64 relative shadow-md sm:rounded-lg dark:bg-gray-700'>
 
-        <tbody className='bg-grey-light flex flex-col items-center justify-between overflow-y-scroll w-full h-40'>
-          {trades?.map((trade, index) => {
-            return (
-              <tr key={index} className="flex w-full">
-                <td className='p-4 w-1/4'>{trade?.posType}</td>
-                <td className='p-4 w-1/4'>{trade?.price}</td>
-                <td className='p-4 w-1/4'>{trade?.stock}</td>
-                <td className='p-4 w-1/4'>{trade?.quantity}</td>
-                <td className='p-4 w-1/4' onClick={() => deleteTrade(index)}>DELETE</td>
+          <table className='w-full text-sm text-left text-gray-500 dark:text-gray-400'>
+            <thead className='text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400'>
+              <tr className=''>
+                <th className='py-3 px-6'>Company</th>
+                <th className='py-3 px-6'>Contact</th>
+                <th className='py-3 px-6'>Country</th>
+                <th className='py-3 px-6'>Country</th>
+                <th className='py-3 px-6'>delete</th>
               </tr>
-            )
-          })}
-        </tbody>
-      </table>
+            </thead>
+
+            <tbody className='h-3'>
+              {trades?.map((trade, index) => {
+                return (
+                  <tr key={index} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700">
+                    <td className={`py-3 px-6 ${(trade?.posType === "Buy" ? "text-green-600" : "text-red-800")}`}>{trade?.posType}</td>
+                    <td className='py-3 px-6'>{trade?.price}</td>
+                    <td className='py-3 px-6'>{trade?.stock}</td>
+                    <td className='py-3 px-6'>{trade?.quantity}</td>
+                    <td className='py-3 px-6 text-red-700' onClick={() => deleteTrade(index)}>DELETE</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
     )
 
@@ -270,48 +282,53 @@ function App() {
   const AllTrades = () => {
 
     return (
-      <table className='border-separate border-spacing-4 border border-black h-28 text-left w-full rounded-lg'>
-        <thead className='flex'>
-          <tr className='flex w-full mb-4'>
-            <th className='p-4 w-1/4'>Company</th>
-            <th className='p-4 w-1/4'>Contact</th>
-            <th className='p-4 w-1/4'>Country</th>
-            <th className='p-4 w-1/4'>Country</th>
+      <div>
+        <a className='text-lg font-semibold mb-7 block'>All trades</a>
 
-          </tr>
-        </thead>
+        <div className='overflow-y-auto h-64 relative shadow-md sm:rounded-lg dark:bg-gray-700'>
+          <table className='w-full text-sm text-left text-gray-500 dark:text-gray-400'>
+            <thead className='text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400'>
+              <tr className=''>
+                <th className='py-3 px-6 '>Position Type</th>
+                <th className='py-3 px-6'>Price</th>
+                <th className='py-3 px-6'>Stock</th>
+                <th className='py-3 px-6'>Quantity</th>
 
-        <tbody className='bg-grey-light flex flex-col items-center justify-between overflow-y-scroll w-full h-40'>
-          {
-            userTrades?.map((userTrade) => {
-              if (userTrade.FirstName === userName) return
-              return userTrade.trades.map((trade, index) => {
-                return (
-                  <tr key={index} className="flex w-full">
-                    <td className='p-4 w-1/4'>{trade?.posType}</td>
-                    <td className='p-4 w-1/4'> {trade?.price}</td>
-                    <td className='p-4 w-1/4'>  {trade?.stock}</td>
-                    <td className='p-4 w-1/4'>  {trade?.quantity}</td>
-                  </tr>
-                )
-              })
-            })
-          }
-        </tbody>
-      </table>
+              </tr>
+            </thead>
+
+            <tbody className='h-3'>
+              {
+                userTrades?.map((userTrade) => {
+                  if (userTrade.FirstName === userName) return
+                  return userTrade.trades.map((trade, index) => {
+                    return (
+                      <tr key={index} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700 ">
+                        <td className={`py-4 px-6 ${(trade?.posType === "Buy" ? "text-green-600" : "text-red-800")}`}>{trade?.posType}</td>
+                        <td className='py-4 px-6'> {trade?.price}</td>
+                        <td className='py-4 px-6'>  {trade?.stock}</td>
+                        <td className='py-4 px-6'>  {trade?.quantity}</td>
+                      </tr>
+                    )
+                  })
+                })
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
     )
 
 
   }
 
-
   return (
     // if authentic show main page else show log in 
     isAuthentic ? (
-      <div className="bg-red-700 w-screen h-screen">
+      <div className="bg-red-700 w-screen h-screen ">
 
         {/* navbar showing user name  */}
-        <div className='bg-slate-100 h-[4%] w-screen flex flex-row-reverse items-center'>
+        <div className='bg-slate-300 h-[4%] w-screen flex flex-row-reverse items-center'>
           <div className='text-center w-64'>
             You Are signed in - {userName}
           </div>
@@ -321,46 +338,40 @@ function App() {
         </div>
 
         {/* divide screen in two show form and my trades on left*/}
-        <div className='bg-amber-600 w-[50%] h-[96%] float-left flex flex-col justify-center items-center'>
+        <div className='bg-gray-500 w-[50%] h-[96%] float-left flex flex-col justify-center items-center'>
 
           <TradeForm />
 
         </div>
 
         {/* Divide screen in two display all trades on the right  */}
-        <div className='bg-yellow-300 w-[50%] h-[96%] float-right'>
+        <div className='bg-gray-500 w-[50%] h-[96%] float-right flex justify-evenly flex-col'>
 
-          <div className='p-5'>
-
-
-
-            <div>
-              <button onClick={fetchTrades}>Fetch my</button>
+          {/* tables with button to display  */}
+          <div className='p-5 text-center'>
+            <div className={`${(trades.length !== 0) ? "hidden " : "text-lg font-semibold outline inline p-5 outline-white"}`}>
+              <button onClick={fetchTrades}>Fetch My Trades</button>
             </div>
-
-            <MyTrades />
-
-
-
-
-
-          </div>
-
-          <div className='p-5'>
             {
-              (true) ? <AllTrades /> : ''
+              (trades.length !== 0) ? (
 
-
-
+                <MyTrades />
+              ) : ''
             }
           </div>
 
+          {/* tables with button to display */}
+          <div className='p-5 text-center'>
 
-
-          <div>
-            <button onClick={fetchAllTrades}>Fetch all</button>
+            <div className={`${(userTrades.length !== 0) ? "hidden" : "text-lg font-semibold outline inline p-5 outline-white"}`}>
+              <button onClick={fetchAllTrades}>Fetch All Trades</button>
+            </div>
+            {
+              (userTrades.length !== 0) ? (
+                <AllTrades />
+              ) : ''
+            }
           </div>
-
 
         </div>
       </div>
