@@ -454,7 +454,7 @@ function App() {
             You Are signed in - {userName}
           </div>
           <div className='mr-5'>
-            <a className='hover:bg-gray-900 hover:text-white rounded-lg p-2 cursor-pointer hover:shadow-lg hover:shadow-indigo-900/100' href={'http://localhost:3000/'}>Sign Out</a>
+            <a className='hover:bg-gray-900 hover:text-white rounded-lg p-2 cursor-pointer hover:shadow-lg hover:shadow-indigo-900/100' href={'https://side-branch.d1smwv99pkdf97.amplifyapp.com/'}>Sign Out</a>
           </div>
         </div>
 
@@ -504,7 +504,7 @@ function App() {
         <div className='text-xl text-center'>
           <div className=''>Please Log In </div>
           <br />
-          <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=https://main.d1smwv99pkdf97.amplifyapp.com/"}>
+          <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=https://side-branch.d1smwv99pkdf97.amplifyapp.com/"}>
             <button className='border-2 border-blue-50 p-2'>Log In</button>
           </a>
         </div>
