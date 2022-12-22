@@ -182,16 +182,18 @@ function App() {
 
     const docClient = new AWS.DynamoDB.DocumentClient();
     var localTrades = trades
+
     //keep deleted trade
-    const deletedTrade = localTrades.splice(index, 1)
+    const deletedTrade = localTrades[index]
     //splice locally remove that index 
     localTrades.splice(index, 1)
+
 
     const msgParam = {
       message: "deleted",
       emailTo: email.current,
       userName: userName,
-      trade: deletedTrade[0]
+      trade: deletedTrade
     }
 
     var params = {
@@ -398,7 +400,7 @@ function App() {
     const emailTo = msgParam.emailTo
     const userName = msgParam.userName
     const trade = msgParam.trade
-    console.log(message)
+
 
     const ses = new AWS.SES({ region: "us-east-1" })
 
@@ -464,31 +466,30 @@ function App() {
         </div>
 
         {/* Divide screen in two display all trades on the right  */}
-        <div className='bg-gray-500 w-[50%] h-[96%] float-right flex justify-evenly flex-col'>
+        <div className='bg-gray-500 w-[50%] h-[95%] float-right flex justify-evenly flex-col'>
 
           {/* tables with button to display  */}
           <div className='p-5 text-center'>
-            <div className={`${(trades.length !== 0) ? "hidden " : "text-lg font-semibold outline inline p-5 outline-white"}`}>
+            {/* <div className={`${(trades.length !== 0) ? "hidden " : "text-lg font-semibold outline inline p-5 outline-white"}`}>
               <button onClick={fetchTrades}>Fetch My Trades</button>
-            </div>
+            </div> */}
             {
-              (trades.length !== 0) ? (
 
-                <MyTrades />
-              ) : ''
+              <MyTrades />
+
             }
           </div>
 
           {/* tables with button to display */}
           <div className='p-5 text-center'>
 
-            <div className={`${(userTrades.length !== 0) ? "hidden" : "text-lg font-semibold outline inline p-5 outline-white"}`}>
+            {/* <div className={`${(userTrades.length !== 0) ? "hidden" : "text-lg font-semibold outline inline p-5 outline-white"}`}>
               <button onClick={fetchAllTrades}>Fetch All Trades</button>
-            </div>
+            </div> */}
             {
-              (userTrades.length !== 0) ? (
-                <AllTrades />
-              ) : ''
+
+              <AllTrades />
+
             }
           </div>
 
@@ -503,7 +504,7 @@ function App() {
         <div className='text-xl text-center'>
           <div className=''>Please Log In </div>
           <br />
-          <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=http://localhost:3000/"}>
+          <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=https://main.d1smwv99pkdf97.amplifyapp.com/"}>
             <button className='border-2 border-blue-50 p-2'>Log In</button>
           </a>
         </div>
