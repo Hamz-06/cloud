@@ -2,11 +2,11 @@ import logo from '../logo.svg';
 
 import React, { memo, useEffect } from 'react';
 // Import required AWS SDK clients and commands for Node.js
-
-import AWS, { CognitoIdentityServiceProvider } from 'aws-sdk';
+import { AWS, cognitoidentityserviceprovider, docClient } from './AwsConfig'
+import { fetchIdentity, sendIdentiyEmail, sendEmail } from './EmailConfig'
 import { useState } from 'react';
 import { useRef } from 'react';
-import { returnDateTime } from './TimeFunction'
+import { fetchAllTrades, fetchTrades } from './FetchTrades';
 
 
 function App() {
@@ -21,60 +21,45 @@ function App() {
 
 
   useEffect(() => {
-
-
-    AWS.config.update({ region: 'us-east-1' })
-    const cognitoidentityserviceprovider = new AWS.CognitoIdentityServiceProvider()
-    // AWS.config.region = 'us-east-1';
+    //get url that is returned to us from logging in and extract idtoken and acctoken 
     const fullUrl = document.location.href
     var idToken = fullUrl.indexOf('id_token') !== -1 ? fullUrl.split('=')[1].split('&')[0] : ''
     var accToken = fullUrl.indexOf('access_token') !== -1 ? fullUrl.split('=')[2].split('&')[0] : ''
 
 
+    if (idToken === '' && accToken === '') return setAuthentic(false)
 
-    if (idToken !== '' && accToken !== '') {
+    //check if user exists and is verified 
+    cognitoidentityserviceprovider.getUser({ AccessToken: accToken }, (err, data) => {
+      if (err) { // an error occurred
+        //if err go back to log in page
+        console.log(err, err.stack)
+        setAuthentic(false)
+      }
+      else {
+        //fetch email address and account info
+        email.current = data.UserAttributes[2].Value
+        fetchIdentity(email.current, updateVerification)
+        fetchTrades(data.Username, updateTrades)
+        fetchAllTrades(allUserTrades)
+        setUserName(data.Username)
+        setAuthentic(true)
+      }
+    })
 
-      cognitoidentityserviceprovider.getUser({ AccessToken: accToken }, (err, data) => {
-        if (err) { // an error occurred
-          console.log(err, err.stack)
-          setAuthentic(false)
-        }
-        else {
 
-          AWS.config.update({ "accessKeyId": "AKIAZPXWTNGS6AJLZRKO", "secretAccessKey": "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", "region": "us-east-1" })
-
-          // AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-          //   IdentityPoolId: 'us-east-1:20197a84-4e22-4bd3-a118-71f5c2174eee',
-          //   Logins: {
-          //     "cognito-idp.us-east-1.amazonaws.com/us-east-1_QIT9K8OPo": idToken
-          //   },
-          //   region: 'us-east-1'
-          // })
-
-          email.current = data.UserAttributes[2].Value
-          fetchIdentity()
-          fetchTrades(data.Username)
-          fetchAllTrades()
-          setUserName(data.Username)
-
-          setAuthentic(true)
-        }
-      })
-
-    }
   }, [])
 
-
-  const addFirst = (stock, Quantity, purchPrice, posType) => {
-
-    const docClient = new AWS.DynamoDB.DocumentClient();
+  //add a trade to dynamo db
+  const addTrade = (stock, Quantity, purchPrice, posType) => {
+    //trade param that needs to be added as an array
     const tradeParams = [{
       posType: posType,
       price: purchPrice,
       stock: stock,
       quantity: Quantity
     }]
-
+    //message param this we sent via email
     const msgParam = {
       message: "added",
       emailTo: email.current,
@@ -82,8 +67,7 @@ function App() {
       trade: tradeParams[0]
     }
 
-
-    // if (0 == 0) return
+    //add trade using put function if first trade
     if (trades === null || trades.length === 0) {
       console.log("create trade and add trade")
       var params = {
@@ -93,6 +77,7 @@ function App() {
           trades: tradeParams
         }
       }
+      //adds trade via docClient 
       docClient.put(params, function (err, data) {
         if (err) {
           console.log(err.message)
@@ -101,16 +86,17 @@ function App() {
         } else {
           console.log("Added succefully")
           if (isVerified) {
+            //if user is verified send an email
             sendEmail(msgParam)
           }
+          //update trades
           updateTrades(params.Item.trades)
         }
       })
     }
-
+    //if second trade add via update
     else {
-      console.log("add trade")
-
+      //trade param
       var params = {
         TableName: "user",
         Key: { FirstName: userName },
@@ -128,6 +114,7 @@ function App() {
           console.log('Please log in again - redirect to login ')
         } else {
           if (isVerified) {
+            //send email if verifed 
             sendEmail(msgParam)
           }
           updateTrades(current => [...current, tradeParams[0]]);
@@ -135,59 +122,18 @@ function App() {
       })
     }
   }
-  const fetchAllTrades = () => {
-    const docClient = new AWS.DynamoDB.DocumentClient();
-    docClient.scan({
-      TableName: "user"
-    }).promise()
-      .then(data => {
 
-        allUserTrades(data.Items)
-      })
-      .catch((err) => {
-        console.error(err)
-      })
-  }
-  //get trades - [check if logged in]
-  const fetchTrades = (uName) => {
-    console.log("rendedr")
-    const docClient = new AWS.DynamoDB.DocumentClient();
 
-    var params = {
-      TableName: "user",
-      KeyConditionExpression: 'FirstName = :i',
-      ExpressionAttributeValues: {
-        ':i': uName
-      }
-    }
-    docClient.query(params, (err, data) => {
-      if (err) {
-        console.log(err)
-        console.log("no entity created yet")
-
-      } else {
-        //IF NO TRADES FIX THE PREFIX . TRADEStttt
-        // console.log(data.Items[0].trades)
-        if (data.Items.length !== 0)
-          // console.log(data)
-          updateTrades(data.Items[0].trades)
-
-      }
-    })
-
-  }
 
 
   const deleteTrade = (index) => {
-
-    const docClient = new AWS.DynamoDB.DocumentClient();
+    //create local copy of trade and manipulate it
     var localTrades = trades
 
-    //keep deleted trade
+    //keep deleted trade (used to submit via email)
     const deletedTrade = localTrades[index]
-    //splice locally remove that index 
+    //splice locally remove that index from that array
     localTrades.splice(index, 1)
-
 
     const msgParam = {
       message: "deleted",
@@ -196,6 +142,7 @@ function App() {
       trade: deletedTrade
     }
 
+    //param - used to delete that trade 
     var params = {
       TableName: "user",
       Key: { FirstName: userName },
@@ -206,8 +153,8 @@ function App() {
       ExpressionAttributeValues: {
         ":vals": localTrades
       },
-
     }
+
     docClient.update(params, function (err, data) {
       if (err) {
         console.log(err.message)
@@ -216,8 +163,10 @@ function App() {
       } else {
         console.log(data)
         if (isVerified) {
+          //if working and verified send an email
           sendEmail(msgParam)
         }
+        //update trades 
         updateTrades([...localTrades])
       }
     })
@@ -225,6 +174,8 @@ function App() {
 
   // Trade form to add trades 
   const TradeForm = () => {
+    //values in form 
+    //posType default is "buy"
     const [posType, setPosType] = useState('Buy')
     const [purchPrice, setpurchPrice] = useState('')
     const [Quantity, setQuantity] = useState('')
@@ -258,7 +209,8 @@ function App() {
           </label>
           <button
             className='mt-5 p-2 pl-5 pr-5 outline outline-gray-50'
-            onClick={() => (Stock !== '' && Quantity !== '' && purchPrice !== '' && posType !== '') ? addFirst(Stock, Quantity, purchPrice, posType) : ''}>
+            //onclick add trade and submit variables
+            onClick={() => (Stock !== '' && Quantity !== '' && purchPrice !== '' && posType !== '') ? addTrade(Stock, Quantity, purchPrice, posType) : ''}>
             click
           </button>
         </div>
@@ -266,9 +218,8 @@ function App() {
     )
   }
 
-  // my trades table
+  // my tradestable
   const MyTrades = () => {
-
 
     return (
       <div>
@@ -290,10 +241,12 @@ function App() {
               {trades?.map((trade, index) => {
                 return (
                   <tr key={index} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700">
+                    {/* change text to green if buy and red if sell */}
                     <td className={`py-3 px-6 ${(trade?.posType === "Buy" ? "text-green-600" : "text-red-800")}`}>{trade?.posType}</td>
                     <td className='py-3 px-6'>{trade?.price}</td>
                     <td className='py-3 px-6'>{trade?.stock}</td>
                     <td className='py-3 px-6'>{trade?.quantity}</td>
+                    {/* delete trade if clicked  */}
                     <td className='py-3 px-6 text-red-700' onClick={() => deleteTrade(index)}>DELETE</td>
                   </tr>
                 )
@@ -304,7 +257,6 @@ function App() {
       </div>
 
     )
-
 
   }
 
@@ -330,6 +282,7 @@ function App() {
 
             <tbody className='h-3'>
               {
+                // map through all user trades and show in a table 
                 userTrades?.map((userTrade) => {
                   if (userTrade.FirstName === userName) return
                   return userTrade.trades.map((trade, index) => {
@@ -355,98 +308,20 @@ function App() {
 
 
 
-  //fetch identity 
-  const fetchIdentity = () => {
-
-    const ses = new AWS.SES({ region: "us-east-1" })
-
-    var params = {
-      IdentityType: "EmailAddress",
-
-      MaxItems: 123,
-      NextToken: ""
-    };
-    ses.listIdentities(params).promise()
-      .then((data) => {
-        console.log(data)
-        const identities = data.Identities
-        const isVerified = identities.includes(email.current)
-        console.log(isVerified)
-
-        updateVerification(isVerified)
-
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-
-  }
-  //send identity email to users 
-  const sendIdentiyEmail = () => {
-    const ses = new AWS.SES({ region: "us-east-1" })
-    var params = {
-      EmailAddress: email.current
-    };
-    ses.verifyEmailIdentity(params, function (err, data) {
-      if (err) console.log(err, err.stack); // an error occurred
-      else console.log(data);           // successful response
-
-    })
-  }
-
-  const sendEmail = (msgParam) => {
-
-    const message = msgParam.message
-    const emailTo = msgParam.emailTo
-    const userName = msgParam.userName
-    const trade = msgParam.trade
-
-
-    const ses = new AWS.SES({ region: "us-east-1" })
-
-    const params = {
-      Destination: {
-        ToAddresses: [emailTo]
-      },
-      Message: {
-        Body: {
-          Text: {
-            Charset: "UTF-8",
-            Data:
-              `Hello ${userName} \n 
-              you have successfully ${message} the trade. Here is what was ${message} \n
-              Stock - ${trade?.stock} \n
-              Quantity - ${trade?.quantity} \n
-              Price - ${trade?.price} \n
-              Position Type - ${trade?.posType} \n
-              Thank you
-              `
-          }
-        },
-        Subject: {
-          Charset: "UTF-8",
-          Data: `Trade ${message} on ${returnDateTime()}`
-        }
-      },
-      Source: "hamzah1010@hotmail.co.uk"
-    }
-    ses.sendEmail(params).promise()
-      .then((res) => console.log(res))
-      .catch((err) => console.log(err))
-  }
 
 
   return (
-    // if authentic show main page else show log in 
+    // MAIN PAGE - (login page below)
     isAuthentic ? (
       <div className="bg-red-700 w-screen h-screen ">
 
         {/* navbar showing user name  */}
         <div className='bg-slate-300 h-[5vh] w-screen flex items-center'>
           <div className='flex-grow ml-5'>
+            {/* send an email to verify account if clicked  */}
             {<a
               className={isVerified ? ` font-bold ` : `hover:bg-gray-900 hover:text-white rounded-lg p-2 cursor-pointer hover:shadow-lg hover:shadow-indigo-900/100`}
-              onClick={() => isVerified ? "" : sendIdentiyEmail()}>
+              onClick={() => isVerified ? "" : sendIdentiyEmail(email.current)}>
               {isVerified ? "Notifications On" : "Notifications Off - Click Me"}
             </a>}
           </div>
@@ -471,9 +346,7 @@ function App() {
 
             {/* tables with button to display  */}
             <div className='p-5 text-center'>
-              {/* <div className={`${(trades.length !== 0) ? "hidden " : "text-lg font-semibold outline inline p-5 outline-white"}`}>
-              <button onClick={fetchTrades}>Fetch My Trades</button>
-            </div> */}
+
               {
 
                 <MyTrades />
@@ -483,26 +356,17 @@ function App() {
 
             {/* tables with button to display */}
             <div className='p-5 text-center'>
-
-              {/* <div className={`${(userTrades.length !== 0) ? "hidden" : "text-lg font-semibold outline inline p-5 outline-white"}`}>
-              <button onClick={fetchAllTrades}>Fetch All Trades</button>
-            </div> */}
               {
-
                 <AllTrades />
-
               }
             </div>
-
-            {/* <button onClick={() => fetchIdentity()}>lol</button> */}
-            {/* <button onClick={() => sendEmail()}>checkEmailVerification</button> */}
 
           </div>
         </div>
 
       </div>
     ) : (
-
+      //LOGIN PAGE
       <div className='w-screen h-screen bg-slate-500 flex items-center justify-center'>
         <div className='text-xl text-center'>
           <div className=''>Please Log In </div>
@@ -517,6 +381,7 @@ function App() {
 
 
   );
+
 }
 
 export default App;
