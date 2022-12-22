@@ -40,8 +40,8 @@ function App() {
           setAuthentic(false)
         }
         else {
-          console.log(process.env.REACT_APP_ACCESS_ID);           // successful response
-          AWS.config.update({ "accessKeyId": process.env.REACT_APP_ACCESS_ID, "secretAccessKey": process.env.REACT_APP_SECRET_ID, "region": "us-east-1" })
+
+          AWS.config.update({ "accessKeyId": "AKIAZPXWTNGS6AJLZRKO", "secretAccessKey": "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", "region": "us-east-1" })
 
           // AWS.config.credentials = new AWS.CognitoIdentityCredentials({
           //   IdentityPoolId: 'us-east-1:20197a84-4e22-4bd3-a118-71f5c2174eee',
