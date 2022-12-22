@@ -442,7 +442,7 @@ function App() {
       <div className="bg-red-700 w-screen h-screen ">
 
         {/* navbar showing user name  */}
-        <div className='bg-slate-300 h-[5%] w-screen flex items-center'>
+        <div className='bg-slate-300 h-[5vh] w-screen flex items-center'>
           <div className='flex-grow ml-5'>
             {<a
               className={isVerified ? ` font-bold ` : `hover:bg-gray-900 hover:text-white rounded-lg p-2 cursor-pointer hover:shadow-lg hover:shadow-indigo-900/100`}
@@ -458,45 +458,48 @@ function App() {
           </div>
         </div>
 
-        {/* divide screen in two show form and my trades on left*/}
-        <div className='bg-gray-500 w-[50%] h-[95%] float-left flex flex-col justify-center items-center'>
+        <div className='flex flex-col sm:flex-row '>
 
-          <TradeForm />
+          {/* divide screen in two show form and my trades on left*/}
+          <div className='bg-gray-500 w-[100vw] sm:w-[50%] h-[95vh] flex flex-col justify-center items-center'>
 
-        </div>
+            <TradeForm />
 
-        {/* Divide screen in two display all trades on the right  */}
-        <div className='bg-gray-500 w-[50%] h-[95%] float-right flex justify-evenly flex-col'>
+          </div>
+          {/* Divide screen in two display all trades on the right  */}
+          <div className='bg-gray-500 w-[100vw] sm:w-[50%] h-[95vh] flex justify-evenly flex-col'>
 
-          {/* tables with button to display  */}
-          <div className='p-5 text-center'>
-            {/* <div className={`${(trades.length !== 0) ? "hidden " : "text-lg font-semibold outline inline p-5 outline-white"}`}>
+            {/* tables with button to display  */}
+            <div className='p-5 text-center'>
+              {/* <div className={`${(trades.length !== 0) ? "hidden " : "text-lg font-semibold outline inline p-5 outline-white"}`}>
               <button onClick={fetchTrades}>Fetch My Trades</button>
             </div> */}
-            {
+              {
 
-              <MyTrades />
+                <MyTrades />
 
-            }
-          </div>
+              }
+            </div>
 
-          {/* tables with button to display */}
-          <div className='p-5 text-center'>
+            {/* tables with button to display */}
+            <div className='p-5 text-center'>
 
-            {/* <div className={`${(userTrades.length !== 0) ? "hidden" : "text-lg font-semibold outline inline p-5 outline-white"}`}>
+              {/* <div className={`${(userTrades.length !== 0) ? "hidden" : "text-lg font-semibold outline inline p-5 outline-white"}`}>
               <button onClick={fetchAllTrades}>Fetch All Trades</button>
             </div> */}
-            {
+              {
 
-              <AllTrades />
+                <AllTrades />
 
-            }
+              }
+            </div>
+
+            {/* <button onClick={() => fetchIdentity()}>lol</button> */}
+            {/* <button onClick={() => sendEmail()}>checkEmailVerification</button> */}
+
           </div>
-
-          {/* <button onClick={() => fetchIdentity()}>lol</button> */}
-          {/* <button onClick={() => sendEmail()}>checkEmailVerification</button> */}
-
         </div>
+
       </div>
     ) : (
 
