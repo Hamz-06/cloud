@@ -100,7 +100,7 @@ function App() {
       var params = {
         TableName: "user",
         Key: { FirstName: userName },
-        UpdateExpression: "SET #c = list_append(#c, :vals)",
+        UpdateExpression: "SET #c = list_append(:vals, #c)",
         ExpressionAttributeNames: {
           "#c": "trades"
         },
@@ -117,7 +117,7 @@ function App() {
             //send email if verifed 
             sendEmail(msgParam)
           }
-          updateTrades(current => [...current, tradeParams[0]]);
+          updateTrades(current => [tradeParams[0], ...current]);
         }
       })
     }
@@ -229,10 +229,10 @@ function App() {
           <table className='w-full text-sm text-left text-gray-500 dark:text-gray-400'>
             <thead className='text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400'>
               <tr className=''>
-                <th className='py-3 px-6'>Company</th>
-                <th className='py-3 px-6'>Contact</th>
-                <th className='py-3 px-6'>Country</th>
-                <th className='py-3 px-6'>Country</th>
+                <th className='py-3 px-6'>Position Type</th>
+                <th className='py-3 px-6'>Purchase Price</th>
+                <th className='py-3 px-6'>Stock</th>
+                <th className='py-3 px-6'>Quantity</th>
                 <th className='py-3 px-6'>delete</th>
               </tr>
             </thead>
@@ -266,14 +266,15 @@ function App() {
 
     return (
       <div>
-        <a className='text-lg font-semibold mb-7 block'>All trades</a>
+        <a className='text-lg font-semibold mb-7 block'>All trades - Order book</a>
 
         <div className='overflow-y-auto h-64 relative shadow-md sm:rounded-lg dark:bg-gray-700'>
           <table className='w-full text-sm text-left text-gray-500 dark:text-gray-400'>
             <thead className='text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400'>
               <tr className=''>
+                <th className='py-3 px-6 '>User Name</th>
                 <th className='py-3 px-6 '>Position Type</th>
-                <th className='py-3 px-6'>Price</th>
+                <th className='py-3 px-6'>Purchase Price</th>
                 <th className='py-3 px-6'>Stock</th>
                 <th className='py-3 px-6'>Quantity</th>
 
@@ -282,12 +283,30 @@ function App() {
 
             <tbody className='h-3'>
               {
-                // map through all user trades and show in a table 
+                trades?.map((trade, index, arr) => {
+
+                  return (
+                    <tr key={index} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700">
+                      {/* change text to green if buy and red if sell */}
+                      <td className='py-3 px-6'>{userName}</td>
+                      <td className={`py-3 px-6 ${(trade?.posType === "Buy" ? "text-green-600" : "text-red-800")}`}>{trade?.posType}</td>
+                      <td className='py-3 px-6'>{trade?.price}</td>
+                      <td className='py-3 px-6'>{trade?.stock}</td>
+                      <td className='py-3 px-6'>{trade?.quantity}</td>
+                      {/* delete trade if clicked  */}
+                    </tr>
+                  )
+                })
+              }
+
+              {
+                // map through all user trades and show in a table (exclude my user)
                 userTrades?.map((userTrade) => {
                   if (userTrade.FirstName === userName) return
                   return userTrade.trades.map((trade, index) => {
                     return (
                       <tr key={index} className="bg-white border-b dark:bg-gray-900 dark:border-gray-700 ">
+                        <td className='py-4 px-6'> {userTrade?.FirstName}</td>
                         <td className={`py-4 px-6 ${(trade?.posType === "Buy" ? "text-green-600" : "text-red-800")}`}>{trade?.posType}</td>
                         <td className='py-4 px-6'> {trade?.price}</td>
                         <td className='py-4 px-6'>  {trade?.stock}</td>
@@ -369,10 +388,10 @@ function App() {
       //LOGIN PAGE
       <div className='w-screen h-screen bg-slate-500 flex items-center justify-center'>
         <div className='text-xl text-center'>
-          <div className=''>Please Log In </div>
+          <div className='mb-4 text-4xl font-extrabold tracking-tight leading-none text-gray-900 md:text-5xl lg:text-6xl '>Online<span className='text-blue-600 dark:text-blue-900'> Cloud</span> Trading Platform </div>
           <br />
           <a href={"https://broker-manager.auth.us-east-1.amazoncognito.com/login?client_id=5k3gc7mkv41l9flj7lfursqor2&response_type=token&scope=aws.cognito.signin.user.admin+email+openid+phone+profile&redirect_uri=https://side-branch.d1smwv99pkdf97.amplifyapp.com/"}>
-            <button className='border-2 border-blue-50 p-2'>Log In</button>
+            <button className='inline-flex justify-center items-center py-3 px-5 text-base font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900'>Log In</button>
           </a>
         </div>
       </div>
